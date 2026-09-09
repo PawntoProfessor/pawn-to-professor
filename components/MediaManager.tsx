@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useState} from 'react'
 import {createClient} from '@/lib/supabase/client'
 
-type Item={name:string;id?:string;created_at?:string;metadata?:any}
+type Item={name:string;id?:string|null;created_at?:string;metadata?:any}
 export default function MediaManager(){
  const supabase=useMemo(()=>createClient(),[]),[items,setItems]=useState<Item[]>([]),[msg,setMsg]=useState(''),[busy,setBusy]=useState(false)
  async function load(){const{data,error}=await supabase.storage.from('media').list('',{limit:100,sortBy:{column:'created_at',order:'desc'}});if(error)setMsg(error.message);else setItems(data||[])}
