@@ -3,20 +3,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-type Item = {
-  name: string
-  id?: string
-  created_at?: string
-  metadata?: any
-}
-
 export default function MediaManager() {
   const supabase = useMemo(() => createClient(), [])
-  const [items, setItems] = useState<Item[]>([])
+
+  // Use Supabase's returned objects directly.
+  // This avoids the FileObject / id:null TypeScript conflict.
+  const [items, setItems] = useState<any[]>([])
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
 
   async function load() {
+    setMsg('')
+
     const { data, error } = await supabase.storage
       .from('media')
       .list('', {
@@ -28,55 +26,65 @@ export default function MediaManager() {
       })
 
     if (error) {
-      setMsg(error.message)
-    } else {
-      setItems(
-        (data || []).map((file) => ({
-          name: file.name,
-          id: file.id ?? undefined,
-          created_at: file.created_at,
-          metadata: file.metadata,
-        }))
-      )
+      console.error('Media load error:', error)
+      setMsg(`❌ ${error.message}`)
+      setItems([])
+      return
     }
+
+    setItems(data ?? [])
   }
 
   useEffect(() => {
-    load()
+    void load()
   }, [])
 
-  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
+  async function upload(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0]
 
-    if (!f) return
+    if (!file) {
+      return
+    }
 
     setBusy(true)
     setMsg('')
 
-    const safe = `${Date.now()}-${f.name.replace(
-      /[^a-zA-Z0-9._-]/g,
-      '-'
-    )}`
+    try {
+      const safeFileName = `${Date.now()}-${file.name.replace(
+        /[^a-zA-Z0-9._-]/g,
+        '-'
+      )}`
 
-    const { error } = await supabase.storage
-      .from('media')
-      .upload(safe, f, {
-        upsert: false,
-      })
+      const { error } = await supabase.storage
+        .from('media')
+        .upload(safeFileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
 
-    setBusy(false)
+      if (error) {
+        console.error('Upload error:', error)
+        setMsg(`❌ ${error.message}`)
+        return
+      }
 
-    if (error) {
-      setMsg(error.message)
-    } else {
-      setMsg('✅ File uploaded. Click Copy URL to use it on a page.')
+      setMsg(
+        '✅ File uploaded successfully. You can now copy its public URL.'
+      )
+
       await load()
+    } catch (error) {
+      console.error(error)
+      setMsg('❌ An unexpected upload error occurred.')
+    } finally {
+      setBusy(false)
+      event.target.value = ''
     }
-
-    e.target.value = ''
   }
 
-  function url(name: string) {
+  function getPublicUrl(name: string) {
     const { data } = supabase.storage
       .from('media')
       .getPublicUrl(name)
@@ -84,32 +92,67 @@ export default function MediaManager() {
     return data.publicUrl
   }
 
-  async function copy(name: string) {
+  async function copyUrl(name: string) {
+    const publicUrl = getPublicUrl(name)
+
     try {
-      await navigator.clipboard.writeText(url(name))
+      await navigator.clipboard.writeText(publicUrl)
       setMsg('✅ Public URL copied.')
-    } catch {
-      setMsg('Could not copy the URL automatically.')
+    } catch (error) {
+      console.error(error)
+      setMsg(
+        `Copy this URL manually: ${publicUrl}`
+      )
     }
   }
 
-  async function remove(name: string) {
+  async function deleteFile(name: string) {
     const confirmed = window.confirm(
-      'Delete this uploaded file permanently?'
+      `Delete "${name}" permanently?`
     )
 
-    if (!confirmed) return
+    if (!confirmed) {
+      return
+    }
+
+    setMsg('')
 
     const { error } = await supabase.storage
       .from('media')
       .remove([name])
 
     if (error) {
-      setMsg(error.message)
-    } else {
-      setMsg('✅ File deleted.')
-      await load()
+      console.error('Delete error:', error)
+      setMsg(`❌ ${error.message}`)
+      return
     }
+
+    setMsg('✅ File deleted.')
+    await load()
+  }
+
+  function isImage(name: string) {
+    return /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(name)
+  }
+
+  function fileIcon(name: string) {
+    if (/\.pdf$/i.test(name)) {
+      return '📕'
+    }
+
+    if (/\.zip$/i.test(name)) {
+      return '📦'
+    }
+
+    if (/\.(mp3|wav|ogg)$/i.test(name)) {
+      return '🎵'
+    }
+
+    if (/\.(mp4|mov|webm)$/i.test(name)) {
+      return '🎬'
+    }
+
+    return '📄'
   }
 
   return (
@@ -117,93 +160,207 @@ export default function MediaManager() {
       <section className="panel">
         <div className="panel-head">
           <div>
-            <h2>Upload files</h2>
+            <h2>Media Library</h2>
 
             <p>
-              Images, PDFs and other teaching files.
-              For large HTML5 games, keep using a hosted game URL.
+              Upload images, PDFs and other teaching
+              resources.
+            </p>
+
+            <p>
+              For HTML5 games, you can continue using
+              a hosted game URL.
             </p>
           </div>
 
-          <label className="btn upload-btn">
-            {busy ? 'Uploading…' : '＋ Upload file'}
+          <label
+            className="btn upload-btn"
+            style={{
+              cursor: busy
+                ? 'not-allowed'
+                : 'pointer',
+            }}
+          >
+            {busy
+              ? 'Uploading…'
+              : '＋ Upload File'}
 
             <input
               type="file"
               onChange={upload}
               disabled={busy}
-              style={{ display: 'none' }}
+              style={{
+                display: 'none',
+              }}
             />
           </label>
         </div>
 
         {msg && (
-          <p className="notice success">
+          <div
+            className="notice"
+            style={{
+              marginTop: 16,
+            }}
+          >
             {msg}
-          </p>
+          </div>
         )}
       </section>
 
       <section
         className="panel"
-        style={{ marginTop: 18 }}
+        style={{
+          marginTop: 18,
+        }}
       >
-        <h2>Your files</h2>
+        <div className="panel-head">
+          <div>
+            <h2>Your Files</h2>
 
-        <div className="media-grid">
-          {items.map((item) => (
-            <div
-              className="media-card"
-              key={item.id ?? item.name}
-            >
-              <div className="media-preview">
-                {/\.(png|jpg|jpeg|gif|webp)$/i.test(item.name) ? (
-                  <img
-                    src={url(item.name)}
-                    alt={item.name}
-                  />
-                ) : (
-                  <span>📄</span>
-                )}
-              </div>
+            <p>
+              {items.length}{' '}
+              {items.length === 1
+                ? 'file'
+                : 'files'}
+            </p>
+          </div>
 
-              <b title={item.name}>
-                {item.name}
-              </b>
-
-              <div className="toolbar">
-                <button
-                  type="button"
-                  className="btn small secondary"
-                  onClick={() => copy(item.name)}
-                >
-                  Copy URL
-                </button>
-
-                <a
-                  className="btn small secondary"
-                  href={url(item.name)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open
-                </a>
-
-                <button
-                  type="button"
-                  className="icon-btn danger-lite"
-                  onClick={() => remove(item.name)}
-                  title="Delete file"
-                >
-                  🗑
-                </button>
-              </div>
-            </div>
-          ))}
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => void load()}
+          >
+            ↻ Refresh
+          </button>
         </div>
 
-        {items.length === 0 && (
-          <p>No files uploaded yet.</p>
+        {items.length === 0 ? (
+          <div
+            style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 48,
+                marginBottom: 12,
+              }}
+            >
+              📁
+            </div>
+
+            <h3>No files uploaded yet</h3>
+
+            <p>
+              Click “Upload File” to add your first
+              image, worksheet or PDF.
+            </p>
+          </div>
+        ) : (
+          <div className="media-grid">
+            {items.map((item) => {
+              const name =
+                typeof item?.name === 'string'
+                  ? item.name
+                  : 'Unnamed file'
+
+              const publicUrl =
+                getPublicUrl(name)
+
+              const key =
+                item?.id ??
+                `${name}-${item?.created_at ?? ''}`
+
+              return (
+                <div
+                  className="media-card"
+                  key={key}
+                >
+                  <div className="media-preview">
+                    {isImage(name) ? (
+                      <img
+                        src={publicUrl}
+                        alt={name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: 48,
+                        }}
+                      >
+                        {fileIcon(name)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 10,
+                    }}
+                  >
+                    <b
+                      title={name}
+                      style={{
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {name}
+                    </b>
+                  </div>
+
+                  <div
+                    className="toolbar"
+                    style={{
+                      marginTop: 12,
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="btn small secondary"
+                      onClick={() =>
+                        void copyUrl(name)
+                      }
+                    >
+                      📋 Copy URL
+                    </button>
+
+                    <a
+                      className="btn small secondary"
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ↗ Open
+                    </a>
+
+                    <button
+                      type="button"
+                      className="icon-btn danger-lite"
+                      onClick={() =>
+                        void deleteFile(name)
+                      }
+                      title="Delete file"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         )}
       </section>
     </div>
