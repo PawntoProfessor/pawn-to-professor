@@ -16,5 +16,61 @@ export const demoPages = [
   {id:'welcome-lesson',section_id:'lessons',title:'Countries & Famous Food',slug:'countries-famous-food',summary:'Taiwan, Japan, Korea and the USA through famous foods.',body:'Add your lesson plan, flashcards, worksheet and related game here.',page_type:'page',external_url:null,grade:'5–6',published:true,position:2,thumbnail_url:null},
 ]
 
-export const defaultBranding = {siteName:'Pawn to Professor',tagline:'Plan • Teach • Play • Inspire',logoText:'♟️'}
-export const defaultHomepage = {heroTitle:'Simple tools. Brighter classrooms.',heroText:'Ready-to-use EFL lessons, games, flashcards and resources — organized in one place.'}
+export const defaultBranding = {
+  siteName:'Pawn to Professor',
+  tagline:'Plan • Teach • Play • Inspire',
+  logoText:'♟️'
+}
+
+export const defaultHomepage = {
+  heroTitle:'Simple tools. Brighter classrooms.',
+  heroText:'Ready-to-use EFL lessons, games, flashcards and resources — organized in one place.'
+}
+
+export const defaultAppearance = {
+  primaryColor:'#0869d8',
+  secondaryColor:'#103a67',
+  accentColor:'#f5a524',
+  backgroundColor:'#f5f9fd',
+  cardColor:'#ffffff',
+  textColor:'#17324d',
+  mutedColor:'#6b7f92',
+  lineColor:'#dbe6ef',
+  headerBackground:'#ffffff',
+  footerBackground:'#ffffff',
+  heroStartColor:'#dff3ff',
+  heroMiddleColor:'#f7fbff',
+  heroEndColor:'#fff1cf',
+  heroTextColor:'#17324d',
+  heroMutedColor:'#6b7f92',
+  bodyFont:'Inter',
+  headingFont:'Poppins',
+  logoImageUrl:'',
+  logoSize:38,
+  heroImageUrl:'',
+  heroImagePosition:'center center',
+  heroOverlayOpacity:0.12,
+  backgroundImageUrl:'',
+  backgroundImagePosition:'center top',
+  backgroundImageSize:'cover',
+  backgroundImageAttachment:'scroll',
+  headerStyle:'solid',
+  headerSticky:true,
+  heroHeight:390,
+  heroTextAlign:'left',
+  showHeroPiece:true,
+  contentWidth:1240,
+  cardRadius:18,
+  buttonRadius:11,
+  shadowStrength:'soft',
+  footerText:'Made for teachers • Easy to manage from your browser',
+  customCss:''
+}
+
+export const fontOptions = [
+  'Inter','Poppins','Nunito','Lexend','Fredoka','Atkinson Hyperlegible','Open Sans','Roboto','Roboto Slab','Merriweather','Georgia','Arial','Verdana','Trebuchet MS'
+]
+
+export const googleFontNames = new Set([
+  'Inter','Poppins','Nunito','Lexend','Fredoka','Atkinson Hyperlegible','Open Sans','Roboto','Roboto Slab','Merriweather'
+])

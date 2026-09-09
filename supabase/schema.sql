@@ -48,7 +48,8 @@ create table if not exists public.site_settings (
 
 insert into public.site_settings(key,value) values
 ('branding', '{"siteName":"Pawn to Professor","tagline":"Plan • Teach • Play • Inspire","logoText":"♟️"}'::jsonb),
-('homepage', '{"heroTitle":"Simple tools. Brighter classrooms.","heroText":"Ready-to-use EFL lessons, games, flashcards and resources — organized in one place."}'::jsonb)
+('homepage', '{"heroTitle":"Simple tools. Brighter classrooms.","heroText":"Ready-to-use EFL lessons, games, flashcards and resources — organized in one place."}'::jsonb),
+('appearance', '{"primaryColor":"#0869d8","secondaryColor":"#103a67","accentColor":"#f5a524","backgroundColor":"#f5f9fd","cardColor":"#ffffff","textColor":"#17324d","mutedColor":"#6b7f92","lineColor":"#dbe6ef","headerBackground":"#ffffff","footerBackground":"#ffffff","heroStartColor":"#dff3ff","heroMiddleColor":"#f7fbff","heroEndColor":"#fff1cf","heroTextColor":"#17324d","heroMutedColor":"#6b7f92","bodyFont":"Inter","headingFont":"Poppins","logoImageUrl":"","logoSize":38,"heroImageUrl":"","heroImagePosition":"center center","heroOverlayOpacity":0.12,"backgroundImageUrl":"","backgroundImagePosition":"center top","backgroundImageSize":"cover","backgroundImageAttachment":"scroll","headerStyle":"solid","headerSticky":true,"heroHeight":390,"heroTextAlign":"left","showHeroPiece":true,"contentWidth":1240,"cardRadius":18,"buttonRadius":11,"shadowStrength":"soft","footerText":"Made for teachers • Easy to manage from your browser","customCss":""}'::jsonb)
 on conflict (key) do nothing;
 
 insert into public.sections(title,slug,icon,description,position) values
