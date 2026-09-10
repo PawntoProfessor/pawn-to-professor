@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>World Food Travel</title>
+<style>
+  :root{--gold:#ffd34f;--ink:#102852;--panel:rgba(14,30,62,.88);--cream:#fff5d7;--safe:#39c86b;--danger:#ff5b5b}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;width:100%;height:100%;background:#0b1b34;font-family:Trebuchet MS,Arial,sans-serif;overflow:hidden;touch-action:manipulation}
+  button{font:inherit}
+  #app{width:100%;height:100%;display:grid;place-items:center;background:radial-gradient(circle at 50% 30%,#214a77,#09172c 72%)}
+  #stage{position:relative;width:min(100vw,150vh);aspect-ratio:3/2;max-height:100vh;overflow:hidden;border-radius:min(1.5vw,18px);box-shadow:0 16px 55px rgba(0,0,0,.5);isolation:isolate;background:#123}
+  #board{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none;pointer-events:none}
+  #shade{position:absolute;inset:0;background:rgba(2,10,25,0);backdrop-filter:blur(0);transition:.35s ease;pointer-events:none;z-index:18}
+  #shade.reveal{background:rgba(2,10,25,.56);backdrop-filter:blur(2.5px)}
+
+  .top-controls{position:absolute;z-index:40;right:1.2%;top:1.5%;display:flex;gap:.55rem}
+  .icon-btn{width:clamp(40px,4vw,58px);height:clamp(40px,4vw,58px);border:2px solid rgba(255,255,255,.88);border-radius:50%;background:rgba(14,35,69,.78);color:white;box-shadow:0 4px 12px rgba(0,0,0,.28);font-size:clamp(18px,2vw,28px);cursor:pointer}
+  .icon-btn:active{transform:scale(.94)}
+
+  #splash{position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:linear-gradient(to bottom,rgba(0,0,0,.08),rgba(0,0,0,.35));cursor:pointer}
+  .splash-card{text-align:center;color:white;text-shadow:0 4px 12px rgba(0,0,0,.75);animation:float 2.3s ease-in-out infinite}
+  .splash-card .tap{display:inline-block;padding:.7em 1.45em;background:linear-gradient(#ffe36e,#ffb929);border:4px solid #fff;border-radius:999px;color:#5b2c00;font-weight:900;font-size:clamp(22px,3.3vw,54px);box-shadow:0 8px 0 #b76500,0 13px 25px rgba(0,0,0,.35);letter-spacing:.03em}
+  .splash-card .small{font-weight:800;font-size:clamp(13px,1.3vw,21px);margin-top:1rem}
+  @keyframes float{50%{transform:translateY(-8px)}}
+
+  .modal{position:absolute;inset:0;z-index:45;display:grid;place-items:center;background:rgba(2,10,25,.55);backdrop-filter:blur(5px)}
+  .modal.hidden{display:none}
+  .panel{width:min(86%,760px);max-height:90%;overflow:auto;background:linear-gradient(#fffaf0,#ffe9b7);border:5px solid white;border-radius:26px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:clamp(16px,2.2vw,30px);color:#15315f;text-align:center}
+  .panel h2{font-size:clamp(26px,3vw,44px);margin:.15em 0 .35em}
+  .panel p{font-size:clamp(15px,1.5vw,22px);margin:.35em 0 1em}
+  .player-count{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap}
+  .choice-btn{min-width:100px;min-height:58px;border:none;border-radius:18px;background:linear-gradient(#4ab8ff,#1571c7);color:white;font-weight:900;font-size:clamp(20px,2.2vw,32px);box-shadow:0 6px 0 #0b4c91;cursor:pointer;padding:.55em 1em}
+  .choice-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #0b4c91}
+  .token-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(8px,1.2vw,16px);margin:1rem 0}
+  .token-choice{position:relative;border:4px solid transparent;background:#fff;border-radius:22px;padding:8px;cursor:pointer;min-width:0}
+  .token-choice img{display:block;width:100%;aspect-ratio:1;object-fit:contain}
+  .token-choice strong{display:block;font-size:clamp(12px,1.3vw,20px);padding:.25em}
+  .token-choice.selected{border-color:#2dcf71;background:#eaffef;transform:translateY(-4px)}
+  .token-choice.used{opacity:.3;pointer-events:none;filter:grayscale(.6)}
+  #setupStatus{font-weight:900;min-height:1.6em;font-size:clamp(15px,1.4vw,21px)}
+
+  #hud{position:absolute;z-index:16;left:1.3%;top:1.4%;display:flex;gap:.7rem;align-items:center;opacity:0;transform:translateY(-10px);transition:.3s}
+  #hud.show{opacity:1;transform:none}
+  #turnBadge{display:flex;align-items:center;gap:.5rem;background:rgba(255,250,232,.94);border:3px solid white;border-radius:999px;padding:.35rem .8rem .35rem .4rem;box-shadow:0 5px 15px rgba(0,0,0,.26);color:#183564;font-weight:900;font-size:clamp(12px,1.25vw,19px)}
+  #turnBadge img{width:clamp(34px,3.8vw,56px);height:clamp(34px,3.8vw,56px);object-fit:contain}
+  #target{position:absolute;z-index:17;left:50%;top:7.6%;transform:translateX(-50%);min-width:28%;max-width:50%;text-align:center;background:linear-gradient(#fff7d8,#ffd765);border:3px solid white;border-radius:999px;box-shadow:0 5px 14px rgba(0,0,0,.3);padding:.45em .9em;color:#17335f;font-weight:1000;font-size:clamp(15px,2vw,31px);opacity:0;transition:.3s;pointer-events:none}
+  #target.show{opacity:1}
+
+  #cards{position:absolute;z-index:15;left:50%;top:52%;transform:translate(-50%,-50%);width:42%;display:grid;grid-template-columns:repeat(4,1fr);gap:2.2%;opacity:0;pointer-events:none;transition:.55s cubic-bezier(.2,.8,.2,1)}
+  #cards.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .memory-card{position:relative;aspect-ratio:.79;border:0;background:none;padding:0;cursor:pointer;perspective:900px;filter:drop-shadow(0 6px 5px rgba(0,0,0,.32));touch-action:manipulation}
+  .memory-card:active{transform:scale(.95)}
+  .memory-card[disabled]{pointer-events:none}
+  .memory-inner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+  .memory-card.flipped .memory-inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:10%;overflow:hidden}
+  .face img{width:100%;height:100%;display:block;object-fit:cover}
+  .front{transform:rotateY(180deg)}
+  .back{background:#0c5ab6}
+  .memory-card.hint{animation:cardPulse 1.1s ease-in-out infinite}
+  @keyframes cardPulse{50%{transform:translateY(-4px)}}
+
+  #focusCard{position:absolute;z-index:30;left:50%;top:50%;width:min(43%,460px);aspect-ratio:.79;transform:translate(-50%,-50%) scale(.18);opacity:0;pointer-events:none;perspective:1200px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.48));transition:transform .42s cubic-bezier(.15,.8,.2,1),opacity .2s}
+  #focusCard.active{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #focusCard .memory-inner{transition:transform .58s cubic-bezier(.2,.7,.2,1)}
+  #focusCard.flipped .memory-inner{transform:rotateY(180deg)}
+  #resultStamp{position:absolute;z-index:33;left:50%;bottom:8%;transform:translate(-50%,20px) scale(.7);opacity:0;padding:.35em .8em;border:4px solid white;border-radius:999px;color:white;font-weight:1000;font-size:clamp(24px,4vw,64px);text-shadow:0 3px 6px rgba(0,0,0,.25);box-shadow:0 10px 25px rgba(0,0,0,.35);transition:.25s;pointer-events:none}
+  #resultStamp.show{opacity:1;transform:translate(-50%,0) scale(1)}
+  #resultStamp.ok{background:#24b75b} #resultStamp.no{background:#e84c54}
+
+  #tokens{position:absolute;inset:0;z-index:13;pointer-events:none}
+  .token{position:absolute;width:clamp(42px,5.2%,76px);aspect-ratio:1;transform:translate(-50%,-50%);transition:left .48s cubic-bezier(.25,.8,.25,1),top .48s cubic-bezier(.25,.8,.25,1);filter:drop-shadow(0 5px 5px rgba(0,0,0,.45));will-change:left,top}
+  .token img{width:100%;height:100%;object-fit:contain;animation:idle 2.6s ease-in-out infinite}
+  .token.active img{animation:activeToken .8s ease-in-out infinite}
+  .token.land img{animation:land .5s ease-out}
+  @keyframes idle{50%{transform:translateY(-3px)}}
+  @keyframes activeToken{50%{transform:translateY(-7px) scale(1.08)}}
+  @keyframes land{0%{transform:translateY(-10px) scale(.9)}60%{transform:translateY(3px) scale(1.12)}100%{transform:none}}
+  #pathMarker{position:absolute;z-index:12;width:clamp(34px,4.7%,70px);aspect-ratio:1;border:4px solid rgba(255,255,255,.95);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 6px rgba(255,214,62,.6),0 0 24px 10px rgba(255,214,62,.45);animation:marker 1.25s ease-in-out infinite;display:none;pointer-events:none}
+  @keyframes marker{50%{transform:translate(-50%,-50%) scale(1.16);opacity:.66}}
+
+  #toast{position:absolute;z-index:35;left:50%;bottom:2.2%;transform:translate(-50%,16px);opacity:0;background:rgba(8,25,54,.92);color:white;border:2px solid rgba(255,255,255,.8);border-radius:999px;padding:.55em 1.1em;font-weight:900;font-size:clamp(12px,1.3vw,20px);transition:.25s;pointer-events:none;white-space:nowrap}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  .rules{text-align:left;font-size:clamp(16px,1.6vw,23px);line-height:1.55;margin:.5rem auto 1rem;max-width:640px}
+  .rules b{color:#0d5fad}
+  .close-btn{border:none;border-radius:999px;padding:.65em 1.5em;background:#173d79;color:white;font-weight:900;font-size:clamp(16px,1.7vw,24px);cursor:pointer}
+
+  #winner .panel{background:linear-gradient(#fffce7,#ffd45f)}
+  #winnerToken{width:min(35%,230px);filter:drop-shadow(0 10px 15px rgba(0,0,0,.25));animation:win 1s ease-in-out infinite}
+  @keyframes win{50%{transform:translateY(-12px) rotate(4deg) scale(1.04)}}
+  .confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+  .confetti i{position:absolute;top:-8%;width:12px;height:24px;border-radius:3px;animation:fall 2.4s linear infinite;background:hsl(var(--h) 85% 58%);left:var(--x);animation-delay:var(--d)}
+  @keyframes fall{to{transform:translateY(1150%) rotate(760deg)}}
+
+  @media(max-width:680px){
+    #cards{width:55%;gap:2%}.token-grid{grid-template-columns:repeat(2,1fr)}#target{top:8.5%;max-width:62%}
+  }
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage" aria-label="World Food Travel game board">
+    <img id="board" src="assets/board/board.png" alt="World Food Travel board" draggable="false" />
+    <div id="shade"></div>
+
+    <div class="top-controls">
+      <button class="icon-btn" id="soundBtn" type="button" aria-label="Sound on">🔊</button>
+      <button class="icon-btn" id="rulesBtn" type="button" aria-label="Rules">?</button>
+      <button class="icon-btn" id="fullBtn" type="button" aria-label="Full screen">⛶</button>
+      <button class="icon-btn" id="newBtn" type="button" aria-label="New game">↻</button>
+    </div>
+
+    <div id="splash" role="button" tabindex="0" aria-label="Tap to start">
+      <div class="splash-card">
+        <div class="tap">TAP TO START</div>
+        <div class="small">🌍 World Food Travel • Memory + English</div>
+      </div>
+    </div>
+
+    <div id="setup" class="modal hidden" aria-modal="true" role="dialog">
+      <div class="panel">
+        <h2>Choose Players</h2>
+        <p>Then choose one Foodie Token for each player.</p>
+        <div class="player-count">
+          <button class="choice-btn count" data-count="2">2 Players</button>
+          <button class="choice-btn count" data-count="3">3 Players</button>
+          <button class="choice-btn count" data-count="4">4 Players</button>
+        </div>
+        <div id="tokenSetup" style="display:none">
+          <h2 id="chooseTitle">Player 1 — Choose a Foodie</h2>
+          <div class="token-grid" id="tokenChoices"></div>
+          <div id="setupStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="hud"><div id="turnBadge"><img alt=""><span>PLAYER 1</span></div></div>
+    <div id="target" aria-live="polite">FIND JAPAN!</div>
+    <div id="pathMarker"></div>
+    <div id="tokens"></div>
+    <div id="cards" aria-label="Eight face-down vocabulary cards"></div>
+
+    <div id="focusCard" aria-hidden="true">
+      <div class="memory-inner">
+        <div class="face back"><img src="assets/cards/card-back.png" alt="Face-down card"></div>
+        <div class="face front"><img id="focusFront" src="" alt=""></div>
+      </div>
+    </div>
+    <div id="resultStamp" aria-live="assertive"></div>
+    <div id="toast" aria-live="polite"></div>
+
+    <div id="rulesModal" class="modal hidden" aria-modal="true" role="dialog">
+      <div class="panel">
+        <h2>How to Play</h2>
+        <div class="rules">
+          <div>👀 <b>Look</b> at the next target.</div>
+          <div>🔊 Listen: <b>“Find Japan!”</b></div>
+          <div>🧠 Remember where the 8 cards are.</div>
+          <div>👆 Touch <b>one</b> face-down card.</div>
+          <div>✅ Correct = <b>+1 space</b> and keep playing.</div>
+          <div>❌ Wrong = <b>−1 space</b> and your turn ends.</div>
+          <div>🏁 First player to reach <b>24 — FINISH</b> wins!</div>
+        </div>
+        <button class="close-btn" id="closeRules">BACK TO GAME</button>
+      </div>
+    </div>
+
+    <div id="winner" class="modal hidden" aria-modal="true" role="dialog">
+      <div class="confetti" id="confetti"></div>
+      <div class="panel">
+        <h2>🏆 WORLD TRAVELER! 🏆</h2>
+        <img id="winnerToken" src="" alt="Winning Foodie token">
+        <h2 id="winnerText">PLAYER 1 WINS!</h2>
+        <button class="choice-btn" id="playAgain">PLAY AGAIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const vocab = [
+    {id:'japan', label:'Japan', img:'assets/cards/japan.png'},
+    {id:'taiwan', label:'Taiwan', img:'assets/cards/taiwan.png'},
+    {id:'korea', label:'Korea', img:'assets/cards/korea.png'},
+    {id:'usa', label:'USA', img:'assets/cards/usa.png'},
+    {id:'xiao-long-bao', label:'Xiao Long Bao', img:'assets/cards/xiao-long-bao.png'},
+    {id:'kimchi', label:'Kimchi', img:'assets/cards/kimchi.png'},
+    {id:'burgers', label:'Burgers', img:'assets/cards/burgers.png'},
+    {id:'famous-sushi', label:'Famous Sushi', img:'assets/cards/famous-sushi.png'}
+  ];
+  const tokenDefs = [
+    {id:'dumpling', name:'Dumpling', img:'assets/tokens/dumpling.png'},
+    {id:'sushi', name:'Sushi', img:'assets/tokens/sushi.png'},
+    {id:'burger', name:'Burger', img:'assets/tokens/burger.png'},
+    {id:'kimchi', name:'Kimchi', img:'assets/tokens/kimchi.png'}
+  ];
+  const sequence = Array.from({length:24},(_,i)=>vocab[i%vocab.length]);
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const stage=$('#stage'), splash=$('#splash'), setup=$('#setup'), cardsEl=$('#cards'), tokensEl=$('#tokens');
+  const targetEl=$('#target'), turnBadge=$('#turnBadge'), hud=$('#hud'), shade=$('#shade'), focusCard=$('#focusCard');
+  const focusFront=$('#focusFront'), stamp=$('#resultStamp'), toast=$('#toast'), marker=$('#pathMarker');
+  const rulesModal=$('#rulesModal'), winner=$('#winner');
+
+  let audioCtx=null, soundOn=true, gameStarted=false, inputLocked=true, playerCount=0, chooseIndex=0;
+  let players=[], currentPlayer=0, deck=[], winnerState=false;
+
+  function ensureAudio(){
+    if(!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();}
+    if(audioCtx.state==='suspended') audioCtx.resume();
+  }
+  function tone(freq=440,dur=.12,type='sine',vol=.07,delay=0){
+    if(!soundOn) return;
+    try{ensureAudio(); const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type=type;o.frequency.value=freq;g.gain.value=0.0001;o.connect(g);g.connect(audioCtx.destination);const t=audioCtx.currentTime+delay;g.gain.exponentialRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.start(t);o.stop(t+dur+.03);}catch(e){}
+  }
+  function sfx(name){
+    if(!soundOn) return;
+    if(name==='opening'){tone(523,.18,'sine',.08);tone(659,.18,'sine',.07,.12);tone(784,.3,'sine',.075,.24)}
+    if(name==='whoosh'){tone(260,.18,'triangle',.045);tone(560,.16,'triangle',.035,.08)}
+    if(name==='flip'){tone(900,.055,'square',.03);tone(560,.08,'triangle',.035,.06)}
+    if(name==='correct'){tone(660,.12,'sine',.07);tone(880,.18,'sine',.075,.10);tone(1046,.22,'sine',.06,.20)}
+    if(name==='wrong'){tone(260,.16,'sine',.055);tone(205,.24,'sine',.05,.12)}
+    if(name==='move'){tone(420,.09,'triangle',.04);tone(620,.1,'triangle',.035,.06)}
+    if(name==='deal'){tone(350,.08,'triangle',.028);tone(480,.08,'triangle',.025,.07)}
+    if(name==='win'){[523,659,784,1046].forEach((f,i)=>tone(f,.28,'sine',.07,i*.13))}
+  }
+  function speak(text){
+    if(!soundOn || !('speechSynthesis' in window)) return;
+    try{speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang='en-US';u.rate=.82;u.pitch=1.04;u.volume=.95; speechSynthesis.speak(u);}catch(e){}
+  }
+  function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+  function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+  // Route: 23 positions trace almost a full oval, then 24 lands on the trophy/FINISH.
+  function routePos(pos){
+    if(pos<=0) return {x:50,y:86.5};
+    if(pos>=24) return {x:50,y:11.2};
+    const angle=(90-(pos*(320/23)))*Math.PI/180;
+    return {x:50+38.6*Math.cos(angle),y:49.5+39.3*Math.sin(angle)};
+  }
+  function applyPos(el,pos,offset=0){
+    const p=routePos(pos); el.style.left=(p.x+offset)+'%';el.style.top=(p.y+offset*.3)+'%';
+  }
+  function showToast(msg,ms=1100){toast.textContent=msg;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),ms)}
+
+  function buildTokenChoices(){
+    const box=$('#tokenChoices'); box.innerHTML='';
+    tokenDefs.forEach(t=>{
+      const b=document.createElement('button');b.className='token-choice';b.type='button';b.dataset.token=t.id;
+      b.innerHTML=`<img src="${t.img}" alt="${t.name}"><strong>${t.name}</strong>`;
+      b.addEventListener('click',()=>chooseToken(t,b));box.appendChild(b);
+    });
+  }
+  function chooseToken(t,button){
+    if(button.classList.contains('used')) return;
+    sfx('deal');
+    players.push({index:chooseIndex,token:t,position:0});
+    button.classList.add('used'); chooseIndex++;
+    if(chooseIndex>=playerCount){startGame();return}
+    $('#chooseTitle').textContent=`Player ${chooseIndex+1} — Choose a Foodie`;
+    $('#setupStatus').textContent=`${chooseIndex} of ${playerCount} ready`;
+  }
+
+  function buildCards(){
+    cardsEl.innerHTML=''; deck=shuffle(vocab.map(v=>({...v})));
+    deck.forEach((v,i)=>{
+      const b=document.createElement('button'); b.type='button'; b.className='memory-card'; b.dataset.index=i; b.setAttribute('aria-label',`Face-down card ${i+1}`);
+      b.innerHTML=`<div class="memory-inner"><div class="face back"><img src="assets/cards/card-back.png" alt="Face-down card"></div><div class="face front"><img src="${v.img}" alt="${v.label}"></div></div>`;
+      b.addEventListener('click',()=>revealCard(i,b)); cardsEl.appendChild(b);
+    });
+  }
+  function buildTokens(){
+    tokensEl.innerHTML='';
+    players.forEach((p,i)=>{
+      const el=document.createElement('div');el.className='token';el.dataset.player=i;el.innerHTML=`<img src="${p.token.img}" alt="Player ${i+1} ${p.token.name}">`;
+      applyPos(el,0,(i-(players.length-1)/2)*1.35);tokensEl.appendChild(el);
+    });
+  }
+  function updateTurn(){
+    $$('.token').forEach((el,i)=>el.classList.toggle('active',i===currentPlayer));
+    const p=players[currentPlayer]; turnBadge.querySelector('img').src=p.token.img;turnBadge.querySelector('span').textContent=`PLAYER ${currentPlayer+1}`;
+    const next=Math.min(24,p.position+1), target=sequence[next-1];
+    targetEl.textContent=`FIND ${target.label.toUpperCase()}!`;
+    const mp=routePos(next); marker.style.left=mp.x+'%';marker.style.top=mp.y+'%';marker.style.display='block';
+    inputLocked=false; setCardsDisabled(false); setTimeout(()=>speak(`Find ${target.label}`),180);
+  }
+  function setCardsDisabled(disabled){$$('.memory-card').forEach(c=>c.disabled=disabled)}
+
+  async function startGame(){
+    setup.classList.add('hidden'); gameStarted=true; winnerState=false; currentPlayer=0; inputLocked=true;
+    buildCards(); buildTokens(); hud.classList.add('show'); targetEl.classList.add('show');
+    await wait(180); cardsEl.classList.add('show');
+    for(let i=0;i<4;i++){sfx('deal');await wait(90)}
+    await wait(320); updateTurn();
+  }
+
+  async function revealCard(index,smallCard){
+    if(inputLocked||winnerState) return;
+    inputLocked=true;setCardsDisabled(true);marker.style.display='none';
+    const chosen=deck[index]; const p=players[currentPlayer]; const next=Math.min(24,p.position+1); const wanted=sequence[next-1];
+    sfx('whoosh');shade.classList.add('reveal');
+    focusFront.src=chosen.img;focusFront.alt=chosen.label;focusCard.classList.remove('flipped');focusCard.classList.add('active');
+    await wait(350);sfx('flip');focusCard.classList.add('flipped');smallCard.classList.add('flipped');
+    await wait(520);speak(chosen.label);await wait(520);
+    const correct=chosen.id===wanted.id;
+    stamp.textContent=correct?'✓ CORRECT!':'✕ OOPS!';stamp.className=correct?'show ok':'show no';
+    sfx(correct?'correct':'wrong');
+    if(correct){
+      await wait(900); stamp.className=''; await closeReveal(smallCard);
+      await movePlayer(currentPlayer,Math.min(24,p.position+1));
+      if(p.position>=24){showWinner();return}
+      updateTurn();
+    }else{
+      await wait(1600); stamp.className=''; await closeReveal(smallCard);
+      await movePlayer(currentPlayer,Math.max(0,p.position-1));
+      currentPlayer=(currentPlayer+1)%players.length;
+      showToast(`Player ${currentPlayer+1}'s turn`,950); await wait(450); updateTurn();
+    }
+  }
+  async function closeReveal(smallCard){
+    sfx('flip');focusCard.classList.remove('flipped');smallCard.classList.remove('flipped');await wait(300);
+    focusCard.classList.remove('active');shade.classList.remove('reveal');await wait(300);
+  }
+  async function movePlayer(i,newPos){
+    const p=players[i];p.position=newPos;const el=$(`.token[data-player="${i}"]`);sfx('move');applyPos(el,newPos,(i-(players.length-1)/2)*1.1);el.classList.add('land');await wait(520);el.classList.remove('land');
+  }
+
+  function showWinner(){
+    winnerState=true;inputLocked=true;setCardsDisabled(true);targetEl.classList.remove('show');marker.style.display='none';
+    const p=players[currentPlayer];$('#winnerToken').src=p.token.img;$('#winnerText').textContent=`PLAYER ${currentPlayer+1} WINS!`;makeConfetti();winner.classList.remove('hidden');sfx('win');setTimeout(()=>speak(`Player ${currentPlayer+1} wins. World Traveler!`),250);
+  }
+  function makeConfetti(){const c=$('#confetti');c.innerHTML='';for(let i=0;i<45;i++){const x=document.createElement('i');x.style.setProperty('--x',Math.random()*100+'%');x.style.setProperty('--h',Math.floor(Math.random()*360));x.style.setProperty('--d',(-Math.random()*2.4)+'s');c.appendChild(x)}}
+
+  function resetToSetup(){
+    if(gameStarted && !confirm('Start a new game? Current progress will be lost.')) return;
+    winner.classList.add('hidden');rulesModal.classList.add('hidden');players=[];playerCount=0;chooseIndex=0;gameStarted=false;winnerState=false;inputLocked=true;
+    cardsEl.classList.remove('show');cardsEl.innerHTML='';tokensEl.innerHTML='';hud.classList.remove('show');targetEl.classList.remove('show');marker.style.display='none';
+    $$('.token-choice').forEach(b=>b.classList.remove('used','selected'));$('#tokenSetup').style.display='none';setup.classList.remove('hidden');
+  }
+
+  splash.addEventListener('click',()=>{ensureAudio();sfx('opening');splash.style.display='none';setup.classList.remove('hidden')});
+  splash.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();splash.click()}});
+  $$('.count').forEach(b=>b.addEventListener('click',()=>{playerCount=Number(b.dataset.count);players=[];chooseIndex=0;$$('.token-choice').forEach(x=>x.classList.remove('used'));$('#tokenSetup').style.display='block';$('#chooseTitle').textContent='Player 1 — Choose a Foodie';$('#setupStatus').textContent=`0 of ${playerCount} ready`;sfx('deal')}));
+  $('#soundBtn').addEventListener('click',()=>{soundOn=!soundOn;$('#soundBtn').textContent=soundOn?'🔊':'🔇';$('#soundBtn').setAttribute('aria-label',soundOn?'Sound on':'Sound off');if(soundOn){ensureAudio();sfx('deal')}});
+  $('#rulesBtn').addEventListener('click',()=>rulesModal.classList.remove('hidden'));
+  $('#closeRules').addEventListener('click',()=>rulesModal.classList.add('hidden'));
+  $('#newBtn').addEventListener('click',resetToSetup);
+  $('#playAgain').addEventListener('click',()=>{winner.classList.add('hidden');players.forEach(p=>p.position=0);currentPlayer=0;winnerState=false;inputLocked=true;buildCards();buildTokens();cardsEl.classList.add('show');targetEl.classList.add('show');updateTurn()});
+  $('#fullBtn').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await stage.requestFullscreen();else await document.exitFullscreen()}catch(e){showToast('Full screen not available')}});
+
+  // Preload critical assets.
+  [...vocab.map(v=>v.img),'assets/cards/card-back.png',...tokenDefs.map(t=>t.img)].forEach(src=>{const im=new Image();im.src=src});
+  buildTokenChoices();
+})();
+</script>
+</body>
+</html>
